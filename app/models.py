@@ -1,5 +1,6 @@
-from manage import db
+from . import db
 from flask_login import UserMixin
+from werkzeug.security import generate_password_hash,check_password_hash
 
 
 
@@ -18,7 +19,7 @@ class Role(db.Model):
     users = db.relationship('User', backref='role', lazy='dynamic')
 
     @staticmethod
-    def insert_roles(self):
+    def insert_roles():
         roles={
             'User':(Permission.FOLLOW|Permission.COMMIT|Permission.WRITE_ARTICLES,True),
             'Moderate':(Permission.FOLLOW|Permission.COMMIT|Permission.WRITE_ARTICLES|
@@ -40,6 +41,7 @@ class User(UserMixin,db.Model):
     id=db.Column(db.Integer,primary_key=True)
     email=db.Column(db.String(64),index=True,unique=True)
     username=db.Column(db.String(128),unique=True,index=True)
+    password_hash=db.Column(db.String(128))
 
     role_id=db.Column(db.Integer,db.ForeignKey('role.id'))
 
@@ -50,4 +52,12 @@ class User(UserMixin,db.Model):
 
     @password.setter       # Enable to set password
     def password(self,password):
-        password=password
+        self.password_hash=generate_password_hash(password)
+
+    def checkout_password(self,password):
+        return check_password_hash(self.password_hash, password)
+
+from . import login_manager
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))

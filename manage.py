@@ -1,12 +1,19 @@
-from flask_script import Manager
-from app import create_app
+from flask_script import Manager,Shell
+from app import create_app, db
 import os
-from flask_sqlalchemy import SQLAlchemy
+from app.models import User,Role
+from flask_migrate import MigrateCommand,Migrate
 
 app=create_app(os.getenv('FLASK_CONFIG') or 'default')
 manager=Manager(app)
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']=True
-db=SQLAlchemy(app)
+
+migrate=Migrate(app,db)
+
+def make_shell_context():
+    return dict(app=app,db=db,User=User,Role=Role)
+manager.add_command('db',MigrateCommand)
+manager.add_command('shell',Shell(make_context=make_shell_context))
 
 
 
