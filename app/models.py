@@ -3,7 +3,6 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash,check_password_hash
 
 
-
 class Permission:
     FOLLOW=0x01
     COMMIT=0x02
