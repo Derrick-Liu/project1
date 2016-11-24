@@ -1,6 +1,8 @@
 from . import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash,check_password_hash
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from flask import current_app
 
 
 class Permission:
@@ -11,6 +13,7 @@ class Permission:
     ADMINISTER=0x80
 
 class Role(db.Model):
+    __tablename__='roles'
     id=db.Column(db.Integer,primary_key=True)
     rolename=db.Column(db.String(64),index=True,unique=True)
     default=db.Column(db.Boolean)
@@ -37,13 +40,14 @@ class Role(db.Model):
 
 
 class User(UserMixin,db.Model):
+    __tablename__='users'
     id=db.Column(db.Integer,primary_key=True)
     email=db.Column(db.String(64),index=True,unique=True)
     username=db.Column(db.String(128),unique=True,index=True)
     password_hash=db.Column(db.String(128))
+    confirmed=db.Column(db.Boolean,default=False)
 
-    role_id=db.Column(db.Integer,db.ForeignKey('role.id'))
-
+    role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
 
     @property
     def password(self):
@@ -55,6 +59,24 @@ class User(UserMixin,db.Model):
 
     def checkout_password(self,password):
         return check_password_hash(self.password_hash, password)
+
+    def generate_confirmation_token(self,expiration=3600):
+        s=Serializer(current_app.config['SECRET_KEY'],expiration)
+        token=s.dumps({'confirm':self.id})
+        return token
+
+    def confirm(self,token):
+        s=Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data=s.loads(token)
+        except:
+            return False
+        if data.get('confirm') != self.id:
+            return False
+        self.confirmed=True
+        db.session.add(self)
+        return True
+
 
 from . import login_manager
 @login_manager.user_loader
