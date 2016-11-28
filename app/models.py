@@ -42,11 +42,14 @@ class Role(db.Model):
 class User(UserMixin,db.Model):
     __tablename__='users'
     id=db.Column(db.Integer,primary_key=True)
-    email=db.Column(db.String(64),index=True,unique=True)
+    age=db.Column(db.Integer)
+    password_hash = db.Column(db.String(128))
     username=db.Column(db.String(128),unique=True,index=True)
-    password_hash=db.Column(db.String(128))
+    gender=db.Column(db.String(32))
+    address=db.Column(db.String(128))
     confirmed=db.Column(db.Boolean,default=False)
-
+    date_of_born=db.Column(db.String(32))
+    email = db.Column(db.String(64))
     role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
 
     @property
