@@ -5,8 +5,13 @@
 
 {% block page_content %}
 <div class="page-header">
-    <h1>Login</h1>
+    <h1>欢迎登陆小太阳论坛</h1>
 </div>
-{{ wtf.quick_form(form) }}
-<p>Click here to <a href="{{url_for('auth.register')}}">register</a></p>
+<div class="col-md-4">
+	{{ wtf.quick_form(form) }}
+    <p> </p>
+    <p>Click here to <a href="{{url_for('auth.register')}}">register</a></p>
+</div>
+
+
 {% endblock %}

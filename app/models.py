@@ -40,48 +40,63 @@ class Role(db.Model):
 
 
 class User(UserMixin,db.Model):
-    __tablename__='users'
-    id=db.Column(db.Integer,primary_key=True)
-    age=db.Column(db.Integer)
-    password_hash = db.Column(db.String(128))
-    username=db.Column(db.String(128),unique=True,index=True)
-    gender=db.Column(db.String(32))
-    address=db.Column(db.String(128))
-    confirmed=db.Column(db.Boolean,default=False)
-    date_of_born=db.Column(db.String(32))
-    email = db.Column(db.String(64))
-    role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
+	__tablename__='users'
+	id=db.Column(db.Integer,primary_key=True)
+	age=db.Column(db.Integer)
+	password_hash = db.Column(db.String(128))
+	username=db.Column(db.String(128),unique=True,index=True)
+	gender=db.Column(db.String(32))
+	address=db.Column(db.String(128))
+	date_of_born=db.Column(db.String(32))
+	email = db.Column(db.String(64))
+	selfintr=db.Column(db.String(256))
+	role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
+	confirmed=db.Column(db.Boolean,default=False)
 
-    @property
-    def password(self):
-        raise AttributeError('Password can not be read!')
+	def  __init__(self,**kwargs):
+		super(User,self).__init__(**kwargs)
+		if self.role is None:
+			if self.email==current_app.config['FLASKY_ADMIN']:
+				self.role=Role.query.filter_by(permission=0xff).first()
+			if self.role is None:
+				self.role=Role.query.filter_by(default=True).first()
 
-    @password.setter       # Enable to set password
-    def password(self,password):
-        self.password_hash=generate_password_hash(password)
+	def can(self,Permission):
+		return self.role is not None and (self.role.permission&Permission)==Permission
 
-    def checkout_password(self,password):
-        return check_password_hash(self.password_hash, password)
+	def is_administrator(self):
+		return self.can(0xff)\
 
-    def generate_confirmation_token(self,expiration=3600):
-        s=Serializer(current_app.config['SECRET_KEY'],expiration)
-        token=s.dumps({'confirm':self.id})
-        return token
+	@property
+	def password(self):
+		raise AttributeError('Password can not be read!')\
 
-    def confirm(self,token):
-        s=Serializer(current_app.config['SECRET_KEY'])
-        try:
-            data=s.loads(token)
-        except:
-            return False
-        if data.get('confirm') != self.id:
-            return False
-        self.confirmed=True
-        db.session.add(self)
-        return True
+	@password.setter       # Enable to set password
+	def password(self,password):
+		self.password_hash=generate_password_hash(password)
+
+	def checkout_password(self,password):
+		return check_password_hash(self.password_hash, password)
+
+	def generate_confirmation_token(self,expiration=3600):
+		s=Serializer(current_app.config['SECRET_KEY'],expiration)
+		token=s.dumps({'confirm':self.id})
+		return token
+
+	def confirm(self,token):
+		s=Serializer(current_app.config['SECRET_KEY'])
+		try:
+			data=s.loads(token)
+		except:
+			return False
+		if data.get('confirm') != self.id:
+			return False
+		self.confirmed=True
+		db.session.add(self)
+		return True
 
 
 from . import login_manager
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+	return User.query.get(int(user_id))
