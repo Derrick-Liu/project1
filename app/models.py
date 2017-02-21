@@ -1,9 +1,9 @@
 from . import db
-from flask_login import UserMixin
+from flask_login import UserMixin,AnonymousUserMixin,login_manager
 from werkzeug.security import generate_password_hash,check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app
-
+from datetime import datetime
 
 class Permission:
     FOLLOW=0x01
@@ -16,7 +16,7 @@ class Role(db.Model):
     __tablename__='roles'
     id=db.Column(db.Integer,primary_key=True)
     rolename=db.Column(db.String(64),index=True,unique=True)
-    default=db.Column(db.Boolean)
+    default=db.Column(db.Boolean,default=False)
     permission=db.Column(db.Integer)
     users = db.relationship('User', backref='role', lazy='dynamic')
 
@@ -41,17 +41,20 @@ class Role(db.Model):
 
 class User(UserMixin,db.Model):
 	__tablename__='users'
-	id=db.Column(db.Integer,primary_key=True)
+	id = db.Column(db.Integer, primary_key=True)
+	username = db.Column(db.String(128), unique=True, index=True)
+	gender = db.Column(db.String(32))
+	address = db.Column(db.String(128))
 	age=db.Column(db.Integer)
+	date_of_born = db.Column(db.String(32))
 	password_hash = db.Column(db.String(128))
-	username=db.Column(db.String(128),unique=True,index=True)
-	gender=db.Column(db.String(32))
-	address=db.Column(db.String(128))
-	date_of_born=db.Column(db.String(32))
 	email = db.Column(db.String(64))
 	selfintr=db.Column(db.String(256))
 	role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
 	confirmed=db.Column(db.Boolean,default=False)
+
+	member_since=db.Column(db.DateTime(),default=datetime.utcnow)
+	last_login=db.Column(db.DateTime(),default=datetime.utcnow)
 
 	def  __init__(self,**kwargs):
 		super(User,self).__init__(**kwargs)
@@ -65,7 +68,7 @@ class User(UserMixin,db.Model):
 		return self.role is not None and (self.role.permission&Permission)==Permission
 
 	def is_administrator(self):
-		return self.can(0xff)\
+		return self.can(Permission.ADMINISTER)
 
 	@property
 	def password(self):
@@ -95,6 +98,12 @@ class User(UserMixin,db.Model):
 		db.session.add(self)
 		return True
 
+class AnonymousUser(AnonymousUserMixin):
+	def can(self,Permission):
+		return False
+	def is_administrator(self):
+		return False
+login_manager.anonymous_user=AnonymousUser
 
 from . import login_manager
 @login_manager.user_loader

@@ -24,12 +24,26 @@
         <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 <li><a href="{{ url_for('main.index') }}">Home</a></li>
+
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 {% if current_user.is_authenticated %}
-                <li><a href="{{url_for('auth.logout')}}">Sign Out</a></li>
+                <div class="btn-group">
+                    <a class="btn btn-link" href="{{ url_for('main.profile',username=current_user.username)}}">{{current_user.username}}</a>
+                    <a class="btn dropdwon-toggle btn-link" data-toggle="dropdown" href="#">
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('main.profile',username=current_user.username)}}">Profile</a> </li>
+                        <li><a href="{{ url_for('main.edit_profile',username=current_user.username)}}">Edit Profile</a></li>
+                        <li><a href="{{url_for('auth.logout')}}">Sign Out</a></li>
+                    </ul>
+                </div>
                 {% else %}
-                <li><a href="{{url_for('auth.login')}}">Sign In</a></li>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-link " onclick="window.location.href=('{{url_for('auth.login')}}')">Sign In</button>
+                    <button type="button" class="btn btn-link " onclick="window.location.href=('{{url_for('auth.register')}}')">Register</button>
+                </div>
                 {% endif %}
             </ul>
         </div>

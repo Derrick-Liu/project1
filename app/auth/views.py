@@ -6,6 +6,7 @@ from flask_login import login_required,logout_user,login_user,current_user
 from ..email import send_email
 import xlrd
 from xlutils.copy import copy
+from datetime import datetime
 
 @auth.route('/login',methods=["POST","GET"])
 def login():
@@ -18,55 +19,67 @@ def login():
         flash('Invalid username or password.')
     return render_template('auth/login.html',form=form)
 
+@auth.before_app_request
+def last_login():
+	if current_user.is_authenticated:
+		current_user.last_login=datetime.utcnow()
+
 @auth.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    flash('You have been logged out.')
-    return redirect(url_for('main.index'))
+	logout_user()
+	flash('You have been logged out.')
+	return redirect(url_for('main.index'))
 
 @auth.route('/register',methods=["POST","GET"])
 def register():
-    form=RegisterForm()
-    if form.validate_on_submit():
-        list=[form.username.data,form.age.data,form.gender.data,form.date_of_born.data,
-              form.address.data,form.email.data,form.selfintr.data]
-        user=User(username=list[0],
+	form=RegisterForm()
+	if form.validate_on_submit():
+		list=[form.username.data,
+              form.age.data,
+              form.gender.data,
+              form.date_of_born.data,
+              form.address.data,
+              form.email.data,
+              form.selfintr.data,
+              datetime.utcnow()]
+		user=User(username=list[0],
 				  age=list[1],
 				  gender=list[2],
 				  date_of_born=list[3],
 				  address=list[4],
 				  email=list[5],
 				  selfintr=list[6],
-                  password=form.password.data)
-                  
-        db.session.add(user)
-        db.session.commit()
-        token=user.generate_confirmation_token()
-        send_email(user.email,'New User','mail/confirm-mail',user=user,token=token)
+                  password=form.password.data,
+                  member_since=list[7])
 
-        #add the information into excel
-        rb=xlrd.open_workbook('D:\\development\\git\\myproject\\test1.xls')
-        wb=copy(rb)
-        wb_sheet=wb.get_sheet(0)
-        for j in range(len(list)):
-            wb_sheet.write(user.id,j,list[j])
-        wb.save('test1.xls')
-        flash('A confirmation email is sent to you. Please check it!')
-        flash('You can now login.')
-        return redirect(url_for('auth.login'))
-    return render_template('auth/register.html',form=form)
+		db.session.add(user)
+		db.session.commit()
+		token=user.generate_confirmation_token()
+		send_email(user.email,'New User','mail/confirm-mail',user=user,token=token)
+
+		rb=xlrd.open_workbook('D:\\development\\git\\myproject\\test1.xls')
+		wb=copy(rb)
+		wb_sheet=wb.get_sheet(0)
+		for j in range(len(list)):
+			wb_sheet.write(user.id,j,list[j])
+		wb_sheet.write(user.id,len(list),user.role.rolename)
+		wb.save('test1.xls')
+		flash('A confirmation email is sent to you. Please check it!')
+		flash('You can now login.')
+		return redirect(url_for('auth.login'))
+	return render_template('auth/register.html',form=form)
 
 @auth.route('/confirm/<token>')
 @login_required
 def confirm(token):
-    if current_user.confirmed is True:
-        return redirect(url_for('main.index'))
-    if current_user.confirm(token):
-        flash('You have confirmed your account!')
-    else:
-        flash('The confirmation link is invalid')
-    return redirect(url_for('main.index'))
+	if current_user.confirmed is True:
+		return redirect(url_for('main.index'))
+	if current_user.confirm(token):
+		flash('You have confirmed your account!')
+	else:
+		flash('The confirmation link is invalid')
+	return redirect(url_for('main.index'))
 
 @auth.before_app_request
 def before_request():
