@@ -103,6 +103,6 @@ def edit_post():
 			author=current_user._get_current_object()
 		)
 		db.session.add(post)
-		return redirect(url_for('main.index'))
+		return redirect(url_for('main.edit_post'))
 	posts=current_user.posts.order_by(Post.timestamp.desc()).all()
 	return render_template('edit_post.html',form=form,posts=posts)

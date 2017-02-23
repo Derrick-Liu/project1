@@ -54,7 +54,7 @@ def register():
                   password=form.password.data,
                   member_since=list[7])
 
-		i=random.randint(2,19)
+		i=random.randint(1,48)
 		user.head_img=url_for('static',filename='%d.jpg'%i)
 
 		db.session.add(user)
