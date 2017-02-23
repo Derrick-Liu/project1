@@ -7,6 +7,7 @@ from ..email import send_email
 import xlrd
 from xlutils.copy import copy
 from datetime import datetime
+import random
 
 @auth.route('/login',methods=["POST","GET"])
 def login():
@@ -52,6 +53,9 @@ def register():
 				  selfintr=list[6],
                   password=form.password.data,
                   member_since=list[7])
+
+		i=random.randint(2,19)
+		user.head_img=url_for('static',filename='%d.jpg'%i)
 
 		db.session.add(user)
 		db.session.commit()

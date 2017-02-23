@@ -29,7 +29,10 @@
             <ul class="nav navbar-nav navbar-right">
                 {% if current_user.is_authenticated %}
                 <div class="btn-group">
-                    <a class="btn btn-link" href="{{ url_for('main.profile',username=current_user.username)}}">{{current_user.username}}</a>
+                    <a class="btn btn-link" href="{{ url_for('main.profile',username=current_user.username)}}">
+                        <img src={{current_user.head_img}} class="img-rounded pull-left" height="20" width="20"/>
+                        {{current_user.username}}
+                    </a>
                     <a class="btn dropdwon-toggle btn-link" data-toggle="dropdown" href="#">
                         <span class="caret"></span>
                     </a>

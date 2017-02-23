@@ -3,10 +3,33 @@
 {% block title %}{{user.username}}{% endblock %}
 
 {% block page_content %}
-<div class="page-header">
-    <h1>{{user.username}}</h1>
+
+<div class="row col-md-2">
+    <img class="img-rounded profile-relativa" src="{{user.head_img}}" height="130" width="130"/>
+
+    <form action="{{url_for('main.upload_file')}}" method="POST" enctype=multipart/form-data>
+        <input type="file" id="xFile" style="position:absolute;clip:rect(0 0 0 0);">
+        <input type=submit id="xSubmit" style="position:absolute;clip:rect(0 0 0 0);">
+        <div class="row">
+            <label class="button button_primary col-md-6 btn-sm" for="xFile">上传图片</label>
+            <label class="button button_primary col-md-6 btn-sm" for="xSubmit">确认更新</label>
+        </div>
+    </form>
+
+    <!--<div class="form-group">-->
+        <!--<input type="file" id="xFile" style="position:absolute;clip:rect(0 0 0 0);">-->
+        <!--<label class="button button_primary input-lg" for="xFile">更换头像</label>-->
+        <!--<label for="exampleInputFile">上传图像</label>-->
+        <!--<input type="file" id="exampleInputFile">-->
+    <!--</div>-->
 </div>
-<div>
+
+<div class="page-header">
+    <div class="col-md-offset-2">
+        <h1>{{user.username}}</h1>
+    </div>
+</div>
+<div class="col-md-offset-2">
     <p>性别：{{ user.gender }}</p>
     <p>地址：{{ user.address }}</p>
     <p>年龄：{{ user.age }}</p>

@@ -1,10 +1,12 @@
 from . import main
-from flask import redirect,render_template,flash,url_for
+from flask import redirect,render_template,flash,url_for,request,abort,send_from_directory,current_app
 from flask_login import login_required,current_user
 from app.models import User,Role,db
 from .form import EditProfileForm
 import xlrd
 from xlutils.copy import copy
+from werkzeug.utils import secure_filename
+import os
 
 @main.route('/')
 def index():
@@ -60,3 +62,22 @@ def edit_profile(username):
     form.email.data=user.email
     form.selfintr.data=user.selfintr
     return render_template('edit_profile.html',form=form)
+
+@main.route('/upload_file',methods=["GET","POST"])
+@login_required
+def upload_file():
+    app = current_app._get_current_object()
+    if request.method=="POST":
+        file=request.files.get('file')
+        if file:
+            filename=secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_IMG_LOCATION'],filename))
+            return redirect(url_for('main.uploaded_file',filename=filename))
+        else:
+            abort(404)
+    return redirect(url_for('main.profile',username=current_user.username))
+
+@main.route('/uploaded_file/<filename>')
+def uploaded_file(filename):
+    app = current_app._get_current_object()
+    return send_from_directory(app.config['UPLOAD_IMG_LOCATION'],filename)

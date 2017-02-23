@@ -56,6 +56,8 @@ class User(UserMixin,db.Model):
 	member_since=db.Column(db.DateTime(),default=datetime.utcnow)
 	last_login=db.Column(db.DateTime(),default=datetime.utcnow)
 
+	head_img=db.Column(db.String)
+
 	def  __init__(self,**kwargs):
 		super(User,self).__init__(**kwargs)
 		if self.role is None:

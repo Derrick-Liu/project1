@@ -1,6 +1,5 @@
 from flask_mail import Message
-from manage import app
-from flask import render_template
+from flask import render_template,current_app
 from app import mail
 
 from threading import Thread
@@ -10,6 +9,7 @@ def send_asnc_email(app,msg):
 
 
 def send_email(to,subject,template,**kwargs):
+    app = current_app._get_current_object()
     msg=Message(app.config['FLASKY_MAIL_SUBJECT_PREFIX']+subject,
                 sender=app.config['FLASKY_MAIL_SENDER'],recipients=[to])  #something about the email
     msg.body=render_template(template+'.txt',**kwargs)
