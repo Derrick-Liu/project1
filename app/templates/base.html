@@ -1,6 +1,10 @@
 {% extends "bootstrap/base.html" %}
 
 {% block title %}Flasky{% endblock %}
+{% block scripts %}
+{{ super() }}
+{{ moment.include_moment() }}
+{% endblock %}
 
 {% block head %}
 {{ super() }}
@@ -38,6 +42,7 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><a href="{{ url_for('main.profile',username=current_user.username)}}">Profile</a> </li>
+                        <li><a href="{{url_for('main.edit_post')}}">Write New Post</a></li>
                         <li><a href="{{ url_for('main.edit_profile',username=current_user.username)}}">Edit Profile</a></li>
                         <li><a href="{{url_for('auth.logout')}}">Sign Out</a></li>
                     </ul>

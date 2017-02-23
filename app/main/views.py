@@ -1,23 +1,34 @@
 from . import main
 from flask import redirect,render_template,flash,url_for,request,abort,send_from_directory,current_app
 from flask_login import login_required,current_user
-from app.models import User,Role,db
-from .form import EditProfileForm
+from app.models import User,Role,db,Post
+from .form import EditProfileForm,EditPostForm
 import xlrd
 from xlutils.copy import copy
 from werkzeug.utils import secure_filename
 import os
+from app.models import Permission
 
-@main.route('/')
+@main.route('/',methods=['GET','POST'])
 def index():
-    return render_template('index.html')
+	form=EditPostForm()
+	if request.method=="POST":
+		post=Post(
+			body=request.form.get('body'),
+			author=current_user._get_current_object()
+		)
+		db.session.add(post)
+		return redirect(url_for('main.index'))
+	posts=Post.query.order_by(Post.timestamp.desc()).all()
+	return render_template('index.html',form=form,posts=posts)
 
 @main.route('/profile/<username>')
 @login_required
 def profile(username):
     user=User.query.filter_by(username=username).first()
     if user is not None:
-        return render_template('user.html',user=user)
+	    posts=user.posts.order_by(Post.timestamp.desc()).all()
+	    return render_template('user.html',user=user,posts=posts)
     else:
         flash('%s is not registered!'%username)
         return redirect(url_for('main.index'))
@@ -81,3 +92,17 @@ def upload_file():
 def uploaded_file(filename):
     app = current_app._get_current_object()
     return send_from_directory(app.config['UPLOAD_IMG_LOCATION'],filename)
+
+@main.route('/edit_post',methods=['POST',"GET"])
+@login_required
+def edit_post():
+	form=EditPostForm()
+	if form.validate_on_submit() and current_user.can(Permission.WRITE_ARTICLES):
+		post=Post(
+			body=form.body.data,
+			author=current_user._get_current_object()
+		)
+		db.session.add(post)
+		return redirect(url_for('main.index'))
+	posts=current_user.posts.order_by(Post.timestamp.desc()).all()
+	return render_template('edit_post.html',form=form,posts=posts)

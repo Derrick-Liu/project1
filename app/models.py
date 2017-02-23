@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash,check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app
 from datetime import datetime
+import bleach
+from markdown import markdown
 
 class Permission:
     FOLLOW=0x01
@@ -58,6 +60,8 @@ class User(UserMixin,db.Model):
 
 	head_img=db.Column(db.String)
 
+	posts=db.relationship('Post',backref='author',lazy='dynamic')
+
 	def  __init__(self,**kwargs):
 		super(User,self).__init__(**kwargs)
 		if self.role is None:
@@ -66,15 +70,15 @@ class User(UserMixin,db.Model):
 			if self.role is None:
 				self.role=Role.query.filter_by(default=True).first()
 
-	def can(self,Permission):
-		return self.role is not None and (self.role.permission&Permission)==Permission
+	def can(self,permission):
+		return self.role is not None and (self.role.permission&permission)==permission
 
 	def is_administrator(self):
 		return self.can(Permission.ADMINISTER)
 
 	@property
 	def password(self):
-		raise AttributeError('Password can not be read!')\
+		raise AttributeError('Password can not be read!')
 
 	@password.setter       # Enable to set password
 	def password(self,password):
@@ -100,14 +104,28 @@ class User(UserMixin,db.Model):
 		db.session.add(self)
 		return True
 
-class AnonymousUser(AnonymousUserMixin):
-	def can(self,Permission):
-		return False
-	def is_administrator(self):
-		return False
-login_manager.anonymous_user=AnonymousUser
+# class AnonymousUser(AnonymousUserMixin):
+# 	def can(self,permissions):
+# 		return False
+# 	def is_administrator(self):
+# 		return False
+# login_manager.anonymous_user=AnonymousUser()
 
 from . import login_manager
 @login_manager.user_loader
 def load_user(user_id):
 	return User.query.get(int(user_id))
+
+class Post(db.Model):
+	__tablename__='posts'
+	id=db.Column(db.Integer,primary_key=True)
+	body=db.Column(db.Text)
+	body_html = db.Column(db.Text)
+	timestamp=db.Column(db.DateTime,index=True,default=datetime.utcnow())
+	author_id=db.Column(db.Integer,db.ForeignKey('users.id'))
+
+	@staticmethod
+	def on_changed_body(target,value,oldvalue,initiator):
+		allowed_tags=['a','abbr','acronym','b','blockquote','code','em','i','li','ol','pre','strong','ul','h1','h2','h3','p']
+		target.body_html=bleach.linkify(bleach.clean(markdown(value,output_format='html'),tags=allowed_tags,strip=True))
+db.event.listen(Post.body,'set',Post.on_changed_body)

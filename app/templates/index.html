@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
 
 {% block title %} Flask-index {% endblock %}
 
@@ -10,4 +11,10 @@
     <h1>Hello,Stranger. This is the home page!</h1>
     {% endif %}
 </div>
+{% if current_user.is_authenticated %}
+{% if current_user.can(Permission.WRITE_ARTICLES) %}
+{{ wtf.quick_form(form) }}
+{% endif %}
+{% endif %}
+{% include "_posts.html" %}
 {% endblock %}

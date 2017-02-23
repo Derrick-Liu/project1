@@ -1,10 +1,10 @@
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from wtforms import StringField,TextAreaField,SubmitField
 from wtforms.validators import DataRequired,Email,Length,ValidationError
 from flask_login import current_user
 from app.models import User,Role
 
-class EditProfileForm(Form):
+class EditProfileForm(FlaskForm):
 	username=StringField('Username',validators=[DataRequired()])
 	age = StringField('Age', validators=[])
 	gender=StringField('Gender')
@@ -17,3 +17,9 @@ class EditProfileForm(Form):
 	def validate_username(self,field):
 		if field.data!=current_user.username and User.query.filter_by(username=field.data).first():
 			raise ValidationError('Username %s already exists'%field.data)
+
+class EditPostForm(FlaskForm):
+	body=TextAreaField('Edit your post:',validators=[DataRequired(),Length(min=5)])
+	submit=SubmitField('Submit')
+
+

@@ -38,7 +38,10 @@
     <p>注册时间：{{ user.member_since }}</p>
     <p>上次登录：{{ user.last_login }}</p>
     <p>自我介绍：{{ user.selfintr }}</p>
-
+</div>
+<div>
+    <p class="test-right"><em><a href="{{url_for('main.edit_post')}}">Write New Post</a></em></p>
+    {% include "_posts.html" %}
 </div>
 
 {% endblock %}
