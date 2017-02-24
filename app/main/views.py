@@ -19,8 +19,12 @@ def index():
 		)
 		db.session.add(post)
 		return redirect(url_for('main.index'))
-	posts=Post.query.order_by(Post.timestamp.desc()).all()
-	return render_template('index.html',form=form,posts=posts)
+	page=request.args.get('page',default=1,type=int)
+	pagination=Post.query.order_by(Post.timestamp.desc()).paginate(
+		page,current_app.config['FLASKY_POSTS_PER_PAGE'],error_out=False
+	)
+	posts=pagination.items
+	return render_template('index.html',form=form,posts=posts,pagination=pagination)
 
 @main.route('/profile/<username>')
 @login_required
@@ -106,3 +110,19 @@ def edit_post():
 		return redirect(url_for('main.edit_post'))
 	posts=current_user.posts.order_by(Post.timestamp.desc()).all()
 	return render_template('edit_post.html',form=form,posts=posts)
+
+@main.route('/edit_post/<int:id>',methods=["POST","GET"])
+def edit_old_post(id):
+	post=Post.query.get_or_404(id)
+	form=EditPostForm()
+	if form.validate_on_submit():
+		post.body=form.body.data
+		db.session.add(post)
+		return redirect(url_for('main.profile',username=current_user.username))
+	form.body.data=post.body
+	return render_template('edit_post.html',form=form)
+
+@main.route('/post/<int:id>')
+def post(id):
+	post=Post.query.get_or_404(id)
+	return render_template('post.html',posts=[post])
