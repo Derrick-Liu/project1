@@ -15,6 +15,12 @@ class Permission:
     MODERATE_COMMENTS=0x08
     ADMINISTER=0x80
 
+class Follow(db.Model):
+	__tablename__='follows'
+	followed_id=db.Column(db.Integer,db.ForeignKey('users.id'),primary_key=True)
+	follower_id=db.Column(db.Integer,db.ForeignKey('users.id'),primary_key=True)
+	timestamp=db.Column(db.DateTime(),default=datetime.utcnow)
+
 class Role(db.Model):
     __tablename__='roles'
     id=db.Column(db.Integer,primary_key=True)
@@ -55,13 +61,48 @@ class User(UserMixin,db.Model):
 	selfintr=db.Column(db.String(256))
 	role_id=db.Column(db.Integer,db.ForeignKey('roles.id'))
 	confirmed=db.Column(db.Boolean,default=False)
-
 	member_since=db.Column(db.DateTime(),default=datetime.utcnow)
 	last_login=db.Column(db.DateTime(),default=datetime.utcnow)
 
 	head_img=db.Column(db.String)
 
 	posts=db.relationship('Post',backref='author',lazy='dynamic')
+	followers=db.relationship('Follow',foreign_keys=[Follow.followed_id],
+							  backref=db.backref('follower',lazy='joined'),
+							  lazy='dynamic',
+							  cascade='all,delete-orphan')
+	followed=db.relationship('Follow',foreign_keys=[Follow.follower_id],
+							 backref=db.backref('followed',lazy='joined'),
+							 lazy='dynamic',
+							 cascade='all,delete-orphan')
+	def followers_count(self):
+		return self.followers.count()
+
+	def followed_count(self):
+		return self.followed.count()
+
+	def is_following(self,user):
+		return self.followed.filter_by(followed_id=user.id).first() is not None
+
+	def is_followed_by(self,user):
+		return self.followers.filter_by(follower_id=user.id).first() is not None
+
+	def follow(self,user):
+		if not self.followed_by(user):
+			follow=Follow(
+				follower_id=self.id,
+				followed_id=user.id
+			)
+			db.session.add(follow)
+
+	def unfollow(self,user):
+		if self.is_following(user):
+			follow=self.followed.filter_by(followed_id=user.id).first()
+			db.session.delete(follow)
+
+	@property
+	def followed_posts(self):
+		return Post.query.join(Follow,Follow.followed_id==Post.author_id).filter(Follow.follower_id==self.id)
 
 	def  __init__(self,**kwargs):
 		super(User,self).__init__(**kwargs)
@@ -110,7 +151,6 @@ class User(UserMixin,db.Model):
 		from random import seed
 		import forgery_py
 
-
 		seed()
 		for i in range(count):
 			j = random.randint(1, 48)
@@ -129,6 +169,8 @@ class User(UserMixin,db.Model):
 				db.session.commit()
 			except IntegrityError:
 				db.session.rollback()
+
+
 
 
 # class AnonymousUser(AnonymousUserMixin):
