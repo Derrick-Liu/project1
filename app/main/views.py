@@ -1,8 +1,8 @@
 from . import main
 from flask import redirect,render_template,flash,url_for,request,abort,send_from_directory,current_app,make_response
 from flask_login import login_required,current_user
-from app.models import User,Role,db,Post,Follow
-from .form import EditProfileForm,EditPostForm
+from app.models import User,Role,db,Post,Follow,Comment
+from .form import EditProfileForm,EditPostForm,CommentsForm
 import xlrd
 from xlutils.copy import copy
 from werkzeug.utils import secure_filename
@@ -32,7 +32,20 @@ def index():
 		page,current_app.config['FLASKY_POSTS_PER_PAGE'],error_out=False
 	)
     posts=pagination.items
-    return render_template('index.html',form=form,posts=posts,pagination=pagination)
+    return render_template('index.html',form=form,posts=posts,pagination=pagination,show_followed=show_followed)
+
+
+@main.route('/all')
+def show_all():
+    resp=make_response(redirect(url_for('main.index')))
+    resp.set_cookie('show_followed','',max_age=30*24*60*60)
+    return resp
+
+@main.route('/show_followed')
+def show_followed():
+    resp=make_response(redirect(url_for('main.index')))
+    resp.set_cookie('show_followed','1',max_age=30*24*60*60)
+    return resp
 
 
 @main.route('/profile/<username>')
@@ -40,11 +53,36 @@ def index():
 def profile(username):
     user=User.query.filter_by(username=username).first()
     if user is not None:
-	    posts=user.posts.order_by(Post.timestamp.desc()).all()
-	    return render_template('user.html',user=user,posts=posts)
+        show_comments=bool(request.cookies.get('show_comments','0'))
+        page=request.args.get('page',1,type=int)
+        pagination_posts=user.posts.order_by(Post.timestamp.desc()).paginate(
+            page,current_app.config['FLASKY_POSTS_PER_PAGE'],error_out=False
+        )
+        pagination_comments=user.comments.order_by(Comment.timestamp.desc()).paginate(
+            page,current_app.config['FLASKY_COMMENTS_PER_PAGE'],error_out=False
+        )
+        posts=pagination_posts.items
+        comments=pagination_comments.items
+        return render_template('user.html',user=user,posts=posts,comments=comments,show_comments=show_comments,
+                               pagination_comments=pagination_comments,pagination_posts=pagination_posts,
+                               )
+
+
     else:
         flash('%s is not registered!'%username)
         return redirect(url_for('main.index'))
+
+@main.route('/profile/<username>/posts')
+def show_posts(username):
+    resp=make_response(redirect(url_for('main.profile',username=username)))
+    resp.set_cookie('show_comments','',max_age=30*24*60*60)
+    return resp
+
+@main.route('/profile/<username>/comments')
+def show_comments(username):
+    resp=make_response(redirect(url_for('main.profile',username=username)))
+    resp.set_cookie('show_comments','1',max_age=30*24*60*60)
+    return resp
 
 @main.route('/<username>/edit_profile',methods=['POST','GET'])
 @login_required
@@ -121,6 +159,7 @@ def edit_post():
 	return render_template('edit_post.html',form=form,posts=posts)
 
 @main.route('/edit_post/<int:id>',methods=["POST","GET"])
+@login_required
 def edit_old_post(id):
 	post=Post.query.get_or_404(id)
 	form=EditPostForm()
@@ -131,10 +170,58 @@ def edit_old_post(id):
 	form.body.data=post.body
 	return render_template('edit_post.html',form=form)
 
-@main.route('/post/<int:id>')
+@main.route('/post/<int:id>',methods=["POST","GET"])
 def post(id):
-	post=Post.query.get_or_404(id)
-	return render_template('post.html',posts=[post])
+    post=Post.query.get_or_404(id)
+    form=CommentsForm()
+    if form.validate_on_submit():
+        comment=Comment(
+            body=form.body.data,
+            post=post,
+            author=current_user
+        )
+        db.session.add(comment)
+        return redirect(url_for('main.post',id=id))
+    page=request.args.get('page',default=1,type=int)
+    pagination=Comment.query.paginate(
+        page,current_app.config['FLASKY_COMMENTS_PER_PAGE'],error_out=False
+    )
+    comments=pagination.items
+    return render_template('post.html',post=post,form=form,user=post.author,comments=comments,pagination=pagination,
+                           endpoint='main.post')
+
+@main.route('/delete_post/<int:id>')
+@login_required
+def delete_post(id):
+    post=Post.query.get_or_404(id)
+    if post:
+        db.session.delete(post)
+        return redirect(url_for('main.index'))
+
+@main.route('/delete_comment/<int:id>')
+def delete_comment(id):
+    comment=Comment.query.get_or_404(id)
+    if comment:
+        id_post=comment.post.id
+        db.session.delete(comment)
+        return redirect(url_for('main.post',id=id_post))
+
+@main.route('/edit_comment/<int:id>',methods=["POST","GET"])
+@login_required
+def edit_comment(id):
+    comment=Comment.query.get_or_404(id)
+    form=EditPostForm()
+    if form.validate_on_submit():
+        id_post=comment.post.id
+        comment.body=form.body.data
+        db.session.add(comment)
+        return redirect(url_for('main.post',id=id_post))
+    form.body.data=comment.body
+    post=comment.post
+    author=post.author
+    comments=post.comments
+    return render_template('post.html',form=form,post=post,user=author,comments=comments)
+
 
 @main.route('/follow/<username>')
 @login_required
@@ -186,15 +273,3 @@ def followed(username):
     )
     followed = [item.follower for item in pagination.items]
     return render_template('follower.html',flag=2,user=user, follow=followed, pagination=pagination,endpoint='main.followers')
-
-@main.route('/all')
-def show_all():
-    resp=make_response(redirect(url_for('main.index')))
-    resp.set_cookie('show_followed','',max_age=30*24*60*60)
-    return resp
-
-@main.route('/show_followed')
-def show_followed():
-    resp=make_response(redirect(url_for('main.index')))
-    resp.set_cookie('show_followed','1',max_age=30*24*60*60)
-    return resp

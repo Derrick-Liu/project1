@@ -66,6 +66,7 @@ class User(UserMixin,db.Model):
 
 	head_img=db.Column(db.String)
 
+	comments=db.relationship('Comment',backref='author',lazy='dynamic')
 	posts=db.relationship('Post',backref='author',lazy='dynamic')
 	followers=db.relationship('Follow',foreign_keys=[Follow.followed_id],
 							  backref=db.backref('follower',lazy='joined'),
@@ -162,13 +163,23 @@ class User(UserMixin,db.Model):
 				address=forgery_py.address.city(),
 				selfintr=forgery_py.lorem_ipsum.sentence(),
 				member_since=forgery_py.date.date(True),
-				head_img = url_for('static', filename='%d.jpg' % j)
+				head_img = url_for('static', filename='head_img/%d.jpg' % j)
 			)
 			db.session.add(u)
 			try:
 				db.session.commit()
 			except IntegrityError:
 				db.session.rollback()
+
+	@staticmethod
+	def change_head_img():
+		count=User.query.count()
+		for i in range(3,count+1):
+			j = random.randint(1, 48)
+			user=User.query.get_or_404(i)
+			user.head_img=url_for('static',filename='head_img/%d.jpg'%j)
+			db.session.add(user)
+			db.session.commit()
 
 
 
@@ -193,6 +204,8 @@ class Post(db.Model):
 	timestamp=db.Column(db.DateTime,index=True,default=datetime.utcnow())
 	author_id=db.Column(db.Integer,db.ForeignKey('users.id'))
 
+	comments=db.relationship('Comment',backref='post',lazy='dynamic')
+
 	@staticmethod
 	def on_changed_body(target,value,oldvalue,initiator):
 		allowed_tags=['a','abbr','acronym','b','blockquote','code','em','i','li','ol','pre','strong','ul','h1','h2','h3','p']
@@ -213,3 +226,38 @@ class Post(db.Model):
 			db.session.commit()
 
 db.event.listen(Post.body,'set',Post.on_changed_body)
+
+class Comment(db.Model):
+	__tablename__='comments'
+	id=db.Column(db.Integer,primary_key=True)
+	body=db.Column(db.Text)
+	body_html=db.Column(db.Text)
+	timestamp=db.Column(db.DateTime,index=True,default=datetime.utcnow)
+
+	post_id=db.Column(db.Integer,db.ForeignKey('posts.id'))
+	author_id=db.Column(db.Integer,db.ForeignKey('users.id'))
+
+	@staticmethod
+	def on_changed_body(target, value, oldvalue, initiator):
+		allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'pre', 'strong',
+						'ul', 'h1', 'h2', 'h3', 'p']
+		target.body_html = bleach.linkify(
+			bleach.clean(markdown(value, output_format='html'), tags=allowed_tags, strip=True))
+
+	@staticmethod
+	def generate_fake(count=1000):
+		from random import seed, randint
+		import forgery_py
+		seed()
+		post_count = Post.query.count()
+		user_count=User.query.count()
+		for i in range(count):
+			u = User.query.offset(randint(0, user_count - 1)).first()
+			p=Post.query.offset(randint(0,post_count-1)).first()
+			c = Comment(body=forgery_py.lorem_ipsum.sentences(randint(1, 3)),
+						author=u,
+						post=p,
+						timestamp=forgery_py.date.date(True))
+			db.session.add(c)
+			db.session.commit()
+db.event.listen(Comment.body,'set',Comment.on_changed_body)

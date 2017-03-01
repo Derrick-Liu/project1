@@ -1,0 +1,31 @@
+<ul class="posts">
+    {% for comment in comments %}
+    <li class="post">
+        <div class="post-thumbnail">
+            <a href="{{url_for('main.profile',username=comment.author.username)}}">
+                <img class="img-rounded profile-thumbnail" src="{{comment.author.head_img}}" height="40" width="40">
+            </a>
+        </div>
+        <div class="post-date">{{ moment(comment.timestamp).fromNow(refresh=True) }}</div>
+
+        <div class="post-author">
+            <a href="{{url_for('main.profile',username=comment.author.username)}}">
+                {{ comment.author.username }}
+            </a>
+        </div>
+        <div class="post-content">
+            {{ comment.body }}
+            <div class="post-footer">
+                {% if comment in current_user.comments %}
+                <a href="{{url_for('main.edit_comment',id=comment.id)}}">
+                    <span class="label label-default">Edit</span>
+                </a>
+                <a href="{{url_for('main.delete_comment',id=comment.id)}}">
+                    <span class="label label-default">Delete</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>

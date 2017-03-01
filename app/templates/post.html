@@ -1,7 +1,41 @@
 {% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% import "_macros.html" as macros %}
 {% block title %} Post {% endblock %}
 
 {% block page_content %}
+<div class="page-header">
+    <a href="{{url_for('main.profile',username=user.username)}}" ><h1>{{user.username}}'s post</h1></a>
+</div>
+<div class="post-thumbnail">
+    <a href="{{url_for('main.profile',username=post.author.username)}}">
+        <img class="img-rounded profile-thumbnail" src="{{post.author.head_img}}" height="40" width="40">
+    </a>
+</div>
+<div class="post-date">{{ moment(post.timestamp).fromNow(refresh=True) }}</div>
+<div class="post-author">
+    <a href="{{url_for('main.profile',username=post.author.username)}}">
+        {{ post.author.username }}
+    </a>
+</div>
+<div class="post-content">
+    {{ post.body }}
+    <div class="post-footer">
+        {% if post in current_user.posts %}
+        <a href="{{url_for('main.edit_old_post',id=post.id)}}">
+            <span class="label label-default">Edit</span>
+        </a>
+        <a href="{{url_for('main.delete_post',id=post.id)}}">
+            <span class="label label-default">Delete</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+<div>
+    <h5><strong>全部评论：</strong></h5>
+</div>
+{% include "_comments.html" %}
+{{ macros.pagination_widget(pagination=pagination,endpoint=endpoint,id=post.id) }}
+{{ wtf.quick_form(form) }}
 
-{% include "_posts.html" %}
 {% endblock %}

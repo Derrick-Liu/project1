@@ -22,4 +22,8 @@ class EditPostForm(FlaskForm):
 	body=TextAreaField('Edit your post:',validators=[DataRequired(),Length(min=5)])
 	submit=SubmitField('Submit')
 
+class CommentsForm(FlaskForm):
+	body=TextAreaField("Make comments here:",validators=[DataRequired(),Length(min=5)])
+	submit=SubmitField('Submit')
+
 
